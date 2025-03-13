@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TaskStatus;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Employee;
 use App\Models\Task;
 use Illuminate\Http\Request;
@@ -29,14 +30,10 @@ class TaskController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreTaskRequest $request)
     {
-        // Gelen request'i doğrula
-        $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'title' => 'required|string|max:255',
-            'status' => ['required', Rule::in(array_column(TaskStatus::cases(), 'value'))], // Enum değerlerini kontrol eder
-        ]);
+        // FormRequest doğrulaması başarılıysa, veriler $request içinde geçerli olur
+        $validated = $request->validated();
 
         // Yeni task oluştur
         $task = Task::create($validated);
@@ -68,7 +65,7 @@ class TaskController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, int $id)
+    public function update(UpdateTaskRequest $request, int $id)
     {
         // 1. Geçerli bir Task olup olmadığını kontrol et
         $task = Task::find($id);
@@ -79,11 +76,8 @@ class TaskController extends Controller
             ], 404);
         }
 
-        // 2. Gelen verileri doğrula
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:255',
-            'status' => 'required|in:pending,in_progress,completed', // Enum değerlerini burada belirtiyoruz
-        ]);
+        // 2. Gelen verileri doğrula, doğrulama işlemi UpdateTaskRequest ile yapılır
+        $validatedData = $request->validated();
 
         // 3. Güncelleme işlemi
         $task->update($validatedData);
@@ -122,7 +116,8 @@ class TaskController extends Controller
             'data' => $tasks
         ]);
     }
-    public function markComplete($id){
+    public function markComplete($id)
+    {
         // 1. Task var mı kontrol et
         $task = Task::find($id);
 
@@ -134,7 +129,7 @@ class TaskController extends Controller
         }
 
         // 2. Zaten completed ise tekrar güncellemeye gerek yok
-        if ($task->status === TaskStatus::COMPLETED->value) {
+        if ($task->status === 'completed') {
             return response()->json([
                 'status' => 'info',
                 'message' => 'Task is already completed',
@@ -143,7 +138,7 @@ class TaskController extends Controller
         }
 
         // 3. Status değerini "completed" yap
-        $task->update(['status' => TaskStatus::COMPLETED->value]);
+        $task->update(['status' => 'completed']);
 
         return response()->json([
             'status' => 'success',
@@ -151,4 +146,5 @@ class TaskController extends Controller
             'task' => $task
         ]);
     }
+
 }
